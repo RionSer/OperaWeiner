@@ -3,7 +3,6 @@ import Image from "next/image"
 export function AboutSection() {
   return (
     <section className="bg-secondary">
-      {/* About Section */}
       <div className="mx-auto max-w-7xl px-6 py-24">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div>
