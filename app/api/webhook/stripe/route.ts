@@ -1,0 +1,96 @@
+import { stripe } from '@/lib/stripe'
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+export async function POST(request: NextRequest) {
+  const body = await request.text()
+  const sig = request.headers.get('stripe-signature')
+
+  if (!endpointSecret || !sig) {
+    return NextResponse.json(
+      { error: 'Missing webhook secret or signature' },
+      { status: 400 }
+    )
+  }
+
+  let event
+
+  try {
+    event = stripe.webhooks.constructEvent(body, sig, endpointSecret)
+  } catch (err) {
+    return NextResponse.json(
+      { error: `Webhook Error: ${(err as Error).message}` },
+      { status: 400 }
+    )
+  }
+
+  const supabase = await createClient()
+
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as any
+      const bookingId = session.metadata?.bookingId
+      const sessionId = session.id
+
+      if (!bookingId) {
+        return NextResponse.json({ error: 'No booking ID' }, { status: 400 })
+      }
+
+      // Update booking with successful payment
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({
+          stripe_session_id: sessionId,
+          stripe_payment_intent_id: session.payment_intent,
+          payment_status: 'completed',
+        })
+        .eq('id', bookingId)
+        .select()
+
+      if (error) {
+        console.error('Error updating booking:', error)
+        return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
+      }
+
+      console.log(`[Webhook] Booking ${bookingId} payment completed`)
+      break
+    }
+
+    case 'checkout.session.expired': {
+      const session = event.data.object as any
+      const bookingId = session.metadata?.bookingId
+
+      if (!bookingId) {
+        return NextResponse.json({ error: 'No booking ID' }, { status: 400 })
+      }
+
+      // Update booking with failed payment
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          payment_status: 'expired',
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error updating booking:', error)
+      }
+
+      console.log(`[Webhook] Booking ${bookingId} checkout expired`)
+      break
+    }
+
+    case 'payment_intent.payment_failed': {
+      const paymentIntent = event.data.object as any
+      console.log(`[Webhook] Payment failed for intent ${paymentIntent.id}`)
+      break
+    }
+
+    default:
+      console.log(`[Webhook] Unhandled event type: ${event.type}`)
+  }
+
+  return NextResponse.json({ received: true }, { status: 200 })
+}
