@@ -77,7 +77,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
           quantity: tickets,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://operatickets.netlify.app/"}/checkout/success?session_id={CHECKOUT_SESSION_ID}&booking_ref=${bookingReference}`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://operatickets.netlify.app/dashboard"}/checkout/success?session_id={CHECKOUT_SESSION_ID}&booking_ref=${bookingReference}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://operatickets.netlify.app/"}/concerts/${concert.id}`,
       metadata: {
         booking_reference: bookingReference,
