@@ -285,10 +285,14 @@ export function PrintButton({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Button onClick={handleDownloadPDF} variant="secondary" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
+    <div className="w-full min-w-0 space-y-3">
+      <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <Button
+          onClick={handleDownloadPDF}
+          variant="secondary"
+          className="flex w-full shrink-0 items-center justify-center gap-2 sm:w-auto"
+        >
+          <Download className="h-4 w-4 shrink-0" />
           {isDownloading ? "Downloading..." : "Download PDF"}
         </Button>
         <input
@@ -296,19 +300,19 @@ export function PrintButton({
           value={recipientEmail}
           onChange={(e) => setRecipientEmail(e.target.value)}
           placeholder="Recipient email"
-          className="h-10 rounded border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-w-[12rem] sm:flex-1 sm:max-w-md"
         />
         <Button
           onClick={handleSendEmail}
           variant="secondary"
-          className="h-10"
+          className="h-10 w-full shrink-0 sm:w-auto"
           disabled={isSendingEmail}
         >
           {isSendingEmail ? "Sending..." : "Send to Email"}
         </Button>
       </div>
       {emailStatus && (
-        <p className="text-sm font-medium text-muted-foreground">{emailStatus}</p>
+        <p className="break-words text-sm font-medium text-muted-foreground">{emailStatus}</p>
       )}
     </div>
   )

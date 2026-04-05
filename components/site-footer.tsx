@@ -3,8 +3,8 @@ import { Music } from "lucide-react"
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-primary text-primary-foreground">
-      <div className="mx-auto max-w-7xl px-6 py-16">
+    <footer className="w-full min-w-0 border-t border-border bg-primary text-primary-foreground">
+      <div className="mx-auto w-full min-w-0 max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="grid gap-12 md:grid-cols-3">
           <div>
             <Link href="/" className="flex items-center gap-2">

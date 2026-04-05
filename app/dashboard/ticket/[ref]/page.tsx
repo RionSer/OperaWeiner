@@ -51,8 +51,8 @@ export default async function TicketDetailPage({
   return (
     <>
       <SiteHeader />
-      <main className="pt-24 pb-16">
-        <div className="mx-auto max-w-2xl px-6">
+      <main className="w-full min-w-0 overflow-x-hidden pt-24 pb-16">
+        <div className="mx-auto w-full min-w-0 max-w-2xl px-4 sm:px-6">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
@@ -64,22 +64,24 @@ export default async function TicketDetailPage({
           {/* Ticket Card */}
           <div className="mt-8 overflow-hidden rounded-lg border border-border bg-card" id="printable-ticket">
             {/* Ticket Header */}
-            <div className="bg-primary px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary-foreground">
-                  <Music className="h-5 w-5" />
-                  <span className="font-serif text-lg font-bold">Wiener Oper</span>
+            <div className="bg-primary px-4 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 text-primary-foreground">
+                  <Music className="h-5 w-5 shrink-0" />
+                  <span className="truncate font-serif text-base font-bold sm:text-lg">
+                    Wiener Oper
+                  </span>
                 </div>
-                <span className="text-xs font-medium uppercase tracking-wider text-primary-foreground/80">
+                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-primary-foreground/80">
                   E-Ticket
                 </span>
               </div>
             </div>
 
             {/* Ticket Body */}
-            <div className="p-6">
+            <div className="min-w-0 p-4 sm:p-6">
               <div className="text-center">
-                <h1 className="font-serif text-2xl font-bold text-card-foreground">
+                <h1 className="break-words px-1 font-serif text-2xl font-bold text-card-foreground">
                   {booking.concert_title}
                 </h1>
                 <p className="mt-1 text-muted-foreground">{booking.concert_composer}</p>
@@ -138,8 +140,8 @@ export default async function TicketDetailPage({
               <div className="my-6 border-t-2 border-dashed border-border" />
 
               {/* QR Code Placeholder & Reference */}
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex min-w-0 flex-col items-center gap-4 sm:flex-row sm:justify-between sm:items-start">
+                <div className="flex w-full min-w-0 items-center gap-4 sm:w-auto">
                   <div className="flex h-24 w-24 items-center justify-center rounded-sm border border-border bg-secondary">
                     <QrCode className="h-16 w-16 text-muted-foreground" />
                   </div>
@@ -147,7 +149,7 @@ export default async function TicketDetailPage({
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Booking Reference
                     </p>
-                    <p className="mt-1 font-mono text-xl font-bold text-accent">
+                    <p className="mt-1 break-all font-mono text-lg font-bold text-accent sm:text-xl">
                       {booking.booking_reference}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -179,7 +181,8 @@ export default async function TicketDetailPage({
           </div>
 
           {/* Actions */}
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row no-print">
+          <div className="no-print mt-6 flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="w-full min-w-0 sm:flex-1">
             <PrintButton
               concertTitle={booking.concert_title}
               concertComposer={booking.concert_composer}
@@ -193,8 +196,9 @@ export default async function TicketDetailPage({
               email={email}
               bookingDate={bookingDateFormatted}
             />
+            </div>
             {concert && (
-              <Button asChild variant="outline" className="flex-1">
+              <Button asChild variant="outline" className="w-full shrink-0 sm:w-auto sm:min-w-[12rem]">
                 <Link href={`/concerts/${concert.id}`}>
                   View Concert Details
                 </Link>

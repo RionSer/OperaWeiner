@@ -42,7 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${_inter.variable} ${_playfair.variable}`}>
-      <body className={`${_inter.className} font-sans antialiased`}>
+      <body
+        className={`${_inter.className} min-h-screen overflow-x-hidden font-sans antialiased`}
+      >
         {children}
         {/*<Analytics />*/}
       </body>
