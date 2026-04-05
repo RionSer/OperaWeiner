@@ -39,12 +39,21 @@ export default async function CheckoutSuccessPage({
     redirect("/")
   }
 
+  const piId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent &&
+          typeof session.payment_intent === "object" &&
+          "id" in session.payment_intent
+        ? (session.payment_intent as { id: string }).id
+        : null
+
   // Update booking status
   const { data: booking, error } = await supabase
     .from("bookings")
     .update({
       payment_status: "completed",
-      stripe_payment_intent_id: session.payment_intent as string,
+      ...(piId ? { stripe_payment_intent_id: piId } : {}),
     })
     .eq("booking_reference", booking_ref)
     .eq("user_id", user.id)

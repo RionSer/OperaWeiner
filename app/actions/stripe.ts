@@ -93,7 +93,8 @@ export async function createCheckoutSession(input: CheckoutInput) {
       success_url: successUrl,
       cancel_url: `${baseUrl}/concerts/${concert.id}`,
       metadata: {
-        bookingId,
+        // Stripe lowercases metadata keys — use snake_case so lookups match the API payload
+        booking_id: bookingId,
         booking_reference: bookingReference,
         user_id: user.id,
         concert_id: concert.id,

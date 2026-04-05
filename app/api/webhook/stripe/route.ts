@@ -4,6 +4,23 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
 
+/** Stripe lowercases metadata keys; payment_intent may be id string or expanded object */
+function bookingIdFromMetadata(metadata: Record<string, string> | null | undefined): string | undefined {
+  if (!metadata) return undefined
+  const id = metadata.booking_id || metadata.bookingid
+  return id?.trim() || undefined
+}
+
+function paymentIntentId(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === 'string') return value
+  if (typeof value === 'object' && 'id' in (value as object)) {
+    const id = (value as { id?: string }).id
+    return typeof id === 'string' ? id : null
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')
@@ -31,20 +48,27 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as any
-      const bookingId = session.metadata?.bookingId as string | undefined
-      const bookingRef = session.metadata?.booking_reference as string | undefined
+      const meta = session.metadata as Record<string, string> | undefined
+      const bookingId = bookingIdFromMetadata(meta)
+      const bookingRef = meta?.booking_reference?.trim() || undefined
       const sessionId = session.id
 
       if (!bookingId && !bookingRef) {
+        console.error('[Webhook] checkout.session.completed missing metadata', {
+          sessionId,
+          metadataKeys: meta ? Object.keys(meta) : [],
+        })
         return NextResponse.json(
           { error: 'No booking id or booking_reference in session metadata' },
           { status: 400 }
         )
       }
 
+      const piId = paymentIntentId(session.payment_intent)
+
       const updatePayload = {
         stripe_session_id: sessionId,
-        stripe_payment_intent_id: session.payment_intent,
+        ...(piId ? { stripe_payment_intent_id: piId } : {}),
         payment_status: 'completed' as const,
       }
 
@@ -55,11 +79,23 @@ export async function POST(request: NextRequest) {
         query = query.eq('booking_reference', bookingRef!)
       }
 
-      const { error } = await query.select()
+      const { data: updatedRows, error } = await query.select('id')
 
       if (error) {
-        console.error('Error updating booking:', error)
+        console.error('[Webhook] Error updating booking:', error)
         return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
+      }
+
+      if (!updatedRows?.length) {
+        console.error('[Webhook] No booking row matched update', {
+          sessionId,
+          bookingId,
+          bookingRef,
+        })
+        return NextResponse.json(
+          { error: 'No matching booking row' },
+          { status: 500 }
+        )
       }
 
       console.log(
@@ -70,8 +106,9 @@ export async function POST(request: NextRequest) {
 
     case 'checkout.session.expired': {
       const session = event.data.object as any
-      const bookingId = session.metadata?.bookingId as string | undefined
-      const bookingRef = session.metadata?.booking_reference as string | undefined
+      const meta = session.metadata as Record<string, string> | undefined
+      const bookingId = bookingIdFromMetadata(meta)
+      const bookingRef = meta?.booking_reference?.trim() || undefined
 
       if (!bookingId && !bookingRef) {
         return NextResponse.json(
