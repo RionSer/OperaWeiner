@@ -37,25 +37,38 @@ export async function createCheckoutSession(input: CheckoutInput) {
   const totalAmount = concert.price * tickets
   const bookingReference = generateBookingReference()
 
-  // Create booking record with pending status
-  const { error: bookingError } = await supabase.from("bookings").insert({
-    user_id: user.id,
-    concert_id: concert.id,
-    concert_title: concert.title,
-    concert_composer: concert.composer,
-    concert_venue: concert.venue,
-    concert_date: concert.date,
-    concert_time: concert.time,
-    tickets: tickets,
-    total_amount: totalAmount,
-    payment_status: "pending",
-    booking_reference: bookingReference,
-  })
+  // Create booking record with pending status (need id for Stripe metadata → webhook updates by id)
+  const { data: insertedBooking, error: bookingError } = await supabase
+    .from("bookings")
+    .insert({
+      user_id: user.id,
+      concert_id: concert.id,
+      concert_title: concert.title,
+      concert_composer: concert.composer,
+      concert_venue: concert.venue,
+      concert_date: concert.date,
+      concert_time: concert.time,
+      tickets: tickets,
+      total_amount: totalAmount,
+      payment_status: "pending",
+      booking_reference: bookingReference,
+    })
+    .select("id")
+    .single()
 
-  if (bookingError) {
+  if (bookingError || !insertedBooking?.id) {
     console.error("Failed to create booking:", bookingError)
     throw new Error("Failed to create booking")
   }
+
+  const bookingId = insertedBooking.id
+
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_BASE_URL || "https://operatickets.netlify.app"
+  ).replace(/\/$/, "")
+
+  // Stripe replaces {CHECKOUT_SESSION_ID}; booking_ref lets /checkout/success mark paid if webhook is delayed
+  const successUrl = `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&booking_ref=${encodeURIComponent(bookingReference)}`
 
   // Create Stripe checkout session
   console.log("Creating Stripe session with amount:", totalAmount, "cents:", Math.round(concert.price * 100))
@@ -77,9 +90,10 @@ export async function createCheckoutSession(input: CheckoutInput) {
           quantity: tickets,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://operatickets.netlify.app"}/dashboard`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://operatickets.netlify.app/"}/concerts/${concert.id}`,
+      success_url: successUrl,
+      cancel_url: `${baseUrl}/concerts/${concert.id}`,
       metadata: {
+        bookingId,
         booking_reference: bookingReference,
         user_id: user.id,
         concert_id: concert.id,

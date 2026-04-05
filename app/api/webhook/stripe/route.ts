@@ -1,5 +1,5 @@
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
@@ -26,59 +26,76 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as any
-      const bookingId = session.metadata?.bookingId
+      const bookingId = session.metadata?.bookingId as string | undefined
+      const bookingRef = session.metadata?.booking_reference as string | undefined
       const sessionId = session.id
 
-      if (!bookingId) {
-        return NextResponse.json({ error: 'No booking ID' }, { status: 400 })
+      if (!bookingId && !bookingRef) {
+        return NextResponse.json(
+          { error: 'No booking id or booking_reference in session metadata' },
+          { status: 400 }
+        )
       }
 
-      // Update booking with successful payment
-      const { data, error } = await supabase
-        .from('bookings')
-        .update({
-          stripe_session_id: sessionId,
-          stripe_payment_intent_id: session.payment_intent,
-          payment_status: 'completed',
-        })
-        .eq('id', bookingId)
-        .select()
+      const updatePayload = {
+        stripe_session_id: sessionId,
+        stripe_payment_intent_id: session.payment_intent,
+        payment_status: 'completed' as const,
+      }
+
+      let query = supabase.from('bookings').update(updatePayload)
+      if (bookingId) {
+        query = query.eq('id', bookingId)
+      } else {
+        query = query.eq('booking_reference', bookingRef!)
+      }
+
+      const { error } = await query.select()
 
       if (error) {
         console.error('Error updating booking:', error)
         return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
       }
 
-      console.log(`[Webhook] Booking ${bookingId} payment completed`)
+      console.log(
+        `[Webhook] Booking payment completed (${bookingId ? `id=${bookingId}` : `ref=${bookingRef}`})`
+      )
       break
     }
 
     case 'checkout.session.expired': {
       const session = event.data.object as any
-      const bookingId = session.metadata?.bookingId
+      const bookingId = session.metadata?.bookingId as string | undefined
+      const bookingRef = session.metadata?.booking_reference as string | undefined
 
-      if (!bookingId) {
-        return NextResponse.json({ error: 'No booking ID' }, { status: 400 })
+      if (!bookingId && !bookingRef) {
+        return NextResponse.json(
+          { error: 'No booking id or booking_reference in session metadata' },
+          { status: 400 }
+        )
       }
 
-      // Update booking with failed payment
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          payment_status: 'expired',
-        })
-        .eq('id', bookingId)
+      let query = supabase.from('bookings').update({ payment_status: 'expired' })
+      if (bookingId) {
+        query = query.eq('id', bookingId)
+      } else {
+        query = query.eq('booking_reference', bookingRef!)
+      }
+
+      const { error } = await query
 
       if (error) {
         console.error('Error updating booking:', error)
       }
 
-      console.log(`[Webhook] Booking ${bookingId} checkout expired`)
+      console.log(
+        `[Webhook] Booking checkout expired (${bookingId ? `id=${bookingId}` : `ref=${bookingRef}`})`
+      )
       break
     }
 

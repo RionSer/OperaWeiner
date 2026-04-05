@@ -45,7 +45,7 @@ export default async function DashboardPage() {
   const pastBookings = (bookings as Booking[] || []).filter(
     (b) => isPast(parseISO(b.concert_date))
   )
-
+  console.log(upcomingBookings)
   return (
     <>
       <SiteHeader />
