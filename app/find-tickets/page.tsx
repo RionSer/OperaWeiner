@@ -1,7 +1,6 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { FormEvent, useEffect, useState } from "react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { createClient } from "@/lib/supabase/client"
@@ -9,18 +8,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 export default function FindTicketsPage() {
-  const searchParams = useSearchParams()
-  const initialEmail = useMemo(
-    () => (searchParams.get("email") || "").trim().toLowerCase(),
-    [searchParams]
-  )
-
-  const [email, setEmail] = useState(initialEmail)
+  const [email, setEmail] = useState("")
   const [error, setError] = useState("")
   const [sentTo, setSentTo] = useState("")
   const [isSending, setIsSending] = useState(false)
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const prefillEmail = (url.searchParams.get("email") || "").trim().toLowerCase()
+    if (prefillEmail) {
+      setEmail(prefillEmail)
+    }
+  }, [])
 
   const sendMagicLink = async (targetEmail: string) => {
     const supabase = createClient()
