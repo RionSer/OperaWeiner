@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { format, isPast, parseISO } from "date-fns"
 import { Calendar, Clock, MapPin, Music, Ticket } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import type { EmailOtpType } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { SiteHeader } from "@/components/site-header"
@@ -28,7 +28,6 @@ interface Booking {
 
 export default function MyTicketsPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [error, setError] = useState("")
@@ -39,9 +38,10 @@ export default function MyTicketsPage() {
       const supabase = createClient()
 
       // Handle callback parameters from magic-link auth before session check.
-      const code = searchParams.get("code")
-      const tokenHash = searchParams.get("token_hash")
-      const type = searchParams.get("type") as EmailOtpType | null
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get("code")
+      const tokenHash = url.searchParams.get("token_hash")
+      const type = url.searchParams.get("type") as EmailOtpType | null
 
       if (code) {
         await supabase.auth.exchangeCodeForSession(code)
@@ -83,7 +83,7 @@ export default function MyTicketsPage() {
     }
 
     loadTickets()
-  }, [router, searchParams])
+  }, [router])
 
   const upcomingBookings = useMemo(
     () => bookings.filter((b) => !isPast(parseISO(b.concert_date))),
