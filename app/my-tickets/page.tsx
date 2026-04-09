@@ -28,6 +28,8 @@ interface Booking {
 
 export default function MyTicketsPage() {
   const router = useRouter()
+  const bypassAuth = process.env.NEXT_PUBLIC_BYPASS_MAGIC_AUTH === "true"
+  const fallbackEmail = (process.env.NEXT_PUBLIC_TEST_TICKET_EMAIL || "").trim().toLowerCase()
   const [isLoading, setIsLoading] = useState(true)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [error, setError] = useState("")
@@ -53,18 +55,26 @@ export default function MyTicketsPage() {
         data: { session },
       } = await supabase.auth.getSession()
 
-      if (!session?.user?.email) {
+      const sessionEmail = session?.user?.email?.toLowerCase()
+      const urlEmail = (url.searchParams.get("email") || "").trim().toLowerCase()
+      const effectiveEmail = sessionEmail || (bypassAuth ? (urlEmail || fallbackEmail) : "")
+
+      if (!effectiveEmail) {
         router.replace("/find-tickets")
         return
       }
 
-      const sessionEmail = session.user.email.toLowerCase()
-      setEmail(sessionEmail)
+      if (!sessionEmail && bypassAuth) {
+        // Explicit warning for temporary testing mode.
+        console.warn("[my-tickets] Auth bypass is enabled for testing.")
+      }
+
+      setEmail(effectiveEmail)
 
       const { data, error: queryError } = await supabase
         .from("bookings")
         .select("*")
-        .eq("email", sessionEmail)
+        .eq("email", effectiveEmail)
         .eq("payment_status", "completed")
         .order("concert_date", { ascending: true })
 
@@ -131,7 +141,7 @@ export default function MyTicketsPage() {
                 ) : (
                   <div className="mt-6 space-y-4">
                     {upcomingBookings.map((booking) => (
-                      <BookingCard key={booking.id} booking={booking} />
+                      <BookingCard key={booking.id} booking={booking} email={email} />
                     ))}
                   </div>
                 )}
@@ -145,7 +155,7 @@ export default function MyTicketsPage() {
                   </h2>
                   <div className="mt-6 space-y-4 opacity-75">
                     {pastBookings.map((booking) => (
-                      <BookingCard key={booking.id} booking={booking} />
+                      <BookingCard key={booking.id} booking={booking} email={email} />
                     ))}
                   </div>
                 </section>
@@ -174,9 +184,12 @@ function EmptyState() {
   )
 }
 
-function BookingCard({ booking }: { booking: Booking }) {
+function BookingCard({ booking, email }: { booking: Booking; email: string }) {
   return (
-    <div className="rounded-sm border border-border bg-card p-6">
+    <Link
+      href={`/my-tickets/${booking.booking_reference}?email=${encodeURIComponent(email)}`}
+      className="block rounded-sm border border-border bg-card p-6 transition-shadow hover:shadow-md"
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1">
           <h3 className="font-serif text-lg font-bold text-card-foreground">{booking.concert_title}</h3>
@@ -206,6 +219,6 @@ function BookingCard({ booking }: { booking: Booking }) {
           </p>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
