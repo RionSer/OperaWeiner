@@ -138,9 +138,9 @@ export default async function CheckoutSuccessPage({
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button asChild>
-              <Link href={`/dashboard?email=${encodeURIComponent(booking.email || "")}`}>
+              <Link href={`/find-tickets?email=${encodeURIComponent(booking.email || "")}`}>
                 <Ticket className="mr-2 h-4 w-4" />
-                View My Tickets
+                View My Tickets Securely
               </Link>
             </Button>
             {concert && (

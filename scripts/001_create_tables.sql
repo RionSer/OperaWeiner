@@ -35,9 +35,10 @@ create table if not exists public.bookings (
 
 alter table public.bookings enable row level security;
 
-create policy "bookings_select_own" on public.bookings for select using (auth.uid() = user_id);
-create policy "bookings_insert_own" on public.bookings for insert with check (auth.uid() = user_id);
-create policy "bookings_update_own" on public.bookings for update using (auth.uid() = user_id);
+create policy "bookings_select_by_email"
+  on public.bookings
+  for select
+  using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
 
 -- Create index for faster lookups
 create index if not exists bookings_user_id_idx on public.bookings(user_id);

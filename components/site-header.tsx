@@ -10,7 +10,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/concerts", label: "Concerts" },
   { href: "/calendar", label: "Calendar" },
-  { href: "/dashboard", label: "My Tickets" },
+  { href: "/find-tickets", label: "My Tickets" },
 ]
 
 export function SiteHeader() {
