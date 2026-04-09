@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { Menu, X, Music } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { UserAuthButton } from "@/components/user-auth-button"
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/concerts", label: "Concerts" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/dashboard", label: "My Tickets" },
 ]
 
 export function SiteHeader() {
@@ -44,10 +44,6 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden md:block">
-          <UserAuthButton />
-        </div>
-
         <button
           className="md:hidden text-foreground"
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -75,9 +71,6 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
-            <div className="pt-2 border-t border-border">
-              <UserAuthButton />
-            </div>
           </nav>
         </div>
       )}

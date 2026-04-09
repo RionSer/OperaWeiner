@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Minus, Plus, Loader2, AlertCircle } from "lucide-react"
+import { Minus, Plus } from "lucide-react"
 import type { Concert } from "@/lib/concerts"
 
 interface BookingFormProps {
@@ -15,53 +14,52 @@ interface BookingFormProps {
 
 export function BookingForm({ concert }: BookingFormProps) {
   const [tickets, setTickets] = useState(1)
-  const [isChecking, setIsChecking] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState("")
   const router = useRouter()
 
-  useEffect(() => {
-    async function checkAuth() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      setIsAuthenticated(!!user)
-      setIsChecking(false)
-    }
-    checkAuth()
-  }, [])
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
   const handleProceed = () => {
-    if (!isAuthenticated) {
-      router.push(`/auth/login?redirect=/concerts/${concert.id}/book`)
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+      setEmailError("Please enter a valid email address.")
       return
     }
-    router.push(`/checkout/${concert.id}?tickets=${tickets}`)
+    setEmailError("")
+    router.push(
+      `/checkout/${concert.id}?tickets=${tickets}&email=${encodeURIComponent(normalizedEmail)}`
+    )
   }
 
   const total = concert.price * tickets
 
-  if (isChecking) {
-    return (
-      <div className="mt-8 flex items-center justify-center rounded-sm border border-border bg-card p-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
   return (
     <div className="mt-8 rounded-sm border border-border bg-card p-6">
-      {!isAuthenticated && (
-        <div className="mb-6 flex items-start gap-3 rounded-md bg-accent/10 p-4">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Sign in required</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              You&apos;ll need to sign in or create an account to complete your booking.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (emailError) setEmailError("")
+            }}
+            className="h-12 text-base"
+          />
+          <p className="text-xs text-muted-foreground">
+            Enter your email to receive tickets and view your booking after payment.
+          </p>
+          {emailError ? (
+            <p className="text-sm text-destructive">{emailError}</p>
+          ) : null}
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="tickets">Number of Tickets</Label>
           <div className="flex items-center gap-4">
@@ -122,7 +120,7 @@ export function BookingForm({ concert }: BookingFormProps) {
         </div>
 
         <Button onClick={handleProceed} className="w-full" size="lg">
-          {isAuthenticated ? "Proceed to Payment" : "Sign In to Continue"}
+          Proceed to Payment
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">

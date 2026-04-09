@@ -1,8 +1,8 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, Ticket, Calendar, MapPin, Clock, Music, QrCode, Printer } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { ArrowLeft, Ticket, Calendar, MapPin, Clock, Music, QrCode } from "lucide-react"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getConcertById } from "@/lib/concerts"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -11,23 +11,26 @@ import { PrintButton } from "@/components/print-button"
 
 export default async function TicketDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ ref: string }>
+  searchParams: Promise<{ email?: string }>
 }) {
   const { ref } = await params
-  
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/auth/login")
+  const { email: emailParam } = await searchParams
+  const email = (emailParam || "").trim().toLowerCase()
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    redirect("/dashboard")
   }
+
+  const supabase = createAdminClient()
 
   const { data: booking, error } = await supabase
     .from("bookings")
     .select("*")
     .eq("booking_reference", ref)
-    .eq("user_id", user.id)
+    .eq("email", email)
     .single()
 
   if (error || !booking) {
@@ -39,14 +42,7 @@ export default async function TicketDetailPage({
   const bookingDate = parseISO(booking.created_at)
   const bookingDateFormatted = format(bookingDate, "MMM d, yyyy")
 
-  const fullName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    (user.user_metadata?.first_name ? `${user.user_metadata.first_name} ${user.user_metadata.last_name ?? ""}`.trim() : "") ||
-    user.email ||
-    "Guest"
-
-  const email = user.email || "unknown@example.com"
+  const fullName = "Guest"
 
   return (
     <>
@@ -54,7 +50,7 @@ export default async function TicketDetailPage({
       <main className="w-full min-w-0 overflow-x-hidden pt-24 pb-16">
         <div className="mx-auto w-full min-w-0 max-w-2xl px-4 sm:px-6">
           <Link
-            href="/dashboard"
+            href={`/dashboard?email=${encodeURIComponent(email)}`}
             className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

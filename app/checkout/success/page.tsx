@@ -3,7 +3,7 @@ import Link from "next/link"
 import { format, parseISO } from "date-fns"
 import { CheckCircle, Ticket, Calendar, MapPin, Clock, Download } from "lucide-react"
 import { stripe } from "@/lib/stripe"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getConcertById } from "@/lib/concerts"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -20,12 +20,7 @@ export default async function CheckoutSuccessPage({
     redirect("/")
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/auth/login")
-  }
+  const supabase = createAdminClient()
 
   // Verify the Stripe session
   let session
@@ -56,7 +51,6 @@ export default async function CheckoutSuccessPage({
       ...(piId ? { stripe_payment_intent_id: piId } : {}),
     })
     .eq("booking_reference", booking_ref)
-    .eq("user_id", user.id)
     .select()
     .single()
 
@@ -144,7 +138,7 @@ export default async function CheckoutSuccessPage({
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button asChild>
-              <Link href="/dashboard">
+              <Link href={`/dashboard?email=${encodeURIComponent(booking.email || "")}`}>
                 <Ticket className="mr-2 h-4 w-4" />
                 View My Tickets
               </Link>

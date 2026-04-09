@@ -16,7 +16,8 @@ create policy "profiles_update_own" on public.profiles for update using (auth.ui
 -- Create bookings table
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  email text not null,
+  user_id uuid references auth.users(id) on delete cascade,
   concert_id text not null,
   concert_title text not null,
   concert_composer text not null,
@@ -40,6 +41,7 @@ create policy "bookings_update_own" on public.bookings for update using (auth.ui
 
 -- Create index for faster lookups
 create index if not exists bookings_user_id_idx on public.bookings(user_id);
+create index if not exists bookings_email_idx on public.bookings(email);
 create index if not exists bookings_booking_reference_idx on public.bookings(booking_reference);
 create index if not exists bookings_stripe_session_id_idx on public.bookings(stripe_session_id);
 

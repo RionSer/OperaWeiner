@@ -7,16 +7,17 @@ import { Spinner } from "@/components/ui/spinner"
 interface CheckoutProps {
   concertId: string
   tickets: number
+  email: string
 }
 
-export function Checkout({ concertId, tickets }: CheckoutProps) {
+export function Checkout({ concertId, tickets, email }: CheckoutProps) {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const initiateCheckout = async () => {
       try {
-        const result = await createCheckoutSession({ concertId, tickets })
+        const result = await createCheckoutSession({ concertId, tickets, email })
 
         if (!result.checkoutUrl) {
           throw new Error("Failed to create checkout URL")
@@ -31,7 +32,7 @@ export function Checkout({ concertId, tickets }: CheckoutProps) {
     }
 
     initiateCheckout()
-  }, [concertId, tickets])
+  }, [concertId, tickets, email])
 
   if (isLoading) {
     return (

@@ -1,9 +1,8 @@
 "use server"
 
 import { stripe } from "@/lib/stripe"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getConcertById } from "@/lib/concerts"
-import { redirect } from "next/navigation"
 
 function generateBookingReference(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -17,16 +16,11 @@ function generateBookingReference(): string {
 interface CheckoutInput {
   concertId: string
   tickets: number
+  email: string
 }
 
 export async function createCheckoutSession(input: CheckoutInput) {
-  const supabase = await createClient()
-  
-  // Check if user is authenticated
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    redirect("/auth/login")
-  }
+  const supabase = createAdminClient()
 
   const concert = getConcertById(input.concertId)
   if (!concert) {
@@ -34,6 +28,11 @@ export async function createCheckoutSession(input: CheckoutInput) {
   }
 
   const tickets = Math.min(Math.max(1, input.tickets), 10)
+  const email = input.email.trim().toLowerCase()
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    throw new Error("Please enter a valid email address")
+  }
   const totalAmount = concert.price * tickets
   const bookingReference = generateBookingReference()
 
@@ -41,7 +40,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
   const { data: insertedBooking, error: bookingError } = await supabase
     .from("bookings")
     .insert({
-      user_id: user.id,
+      email,
       concert_id: concert.id,
       concert_title: concert.title,
       concert_composer: concert.composer,
@@ -96,9 +95,10 @@ export async function createCheckoutSession(input: CheckoutInput) {
         // Stripe lowercases metadata keys — use snake_case so lookups match the API payload
         booking_id: bookingId,
         booking_reference: bookingReference,
-        user_id: user.id,
+        email,
         concert_id: concert.id,
       },
+      customer_email: email,
     })
     console.log("Stripe session created successfully:", session.id)
   } catch (stripeError) {

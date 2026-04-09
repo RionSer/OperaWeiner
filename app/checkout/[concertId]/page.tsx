@@ -1,9 +1,8 @@
-import { redirect, notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
 import { getConcertById } from "@/lib/concerts"
-import { createClient } from "@/lib/supabase/server"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Checkout } from "@/components/checkout"
@@ -13,17 +12,10 @@ export default async function CheckoutPage({
   searchParams,
 }: {
   params: Promise<{ concertId: string }>
-  searchParams: Promise<{ tickets?: string }>
+  searchParams: Promise<{ tickets?: string; email?: string }>
 }) {
   const { concertId } = await params
-  const { tickets: ticketsParam } = await searchParams
-  
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect(`/auth/login?redirect=/checkout/${concertId}?tickets=${ticketsParam || 1}`)
-  }
+  const { tickets: ticketsParam, email } = await searchParams
 
   const concert = getConcertById(concertId)
   if (!concert) {
@@ -31,6 +23,11 @@ export default async function CheckoutPage({
   }
 
   const tickets = Math.min(Math.max(1, parseInt(ticketsParam || "1") || 1), 10)
+  const normalizedEmail = (email || "").trim().toLowerCase()
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(normalizedEmail)) {
+    redirect(`/concerts/${concertId}/book`)
+  }
   const total = concert.price * tickets
   const dateObj = parseISO(concert.date)
 
@@ -118,7 +115,7 @@ export default async function CheckoutPage({
 
             {/* Stripe Checkout */}
             <div className="lg:col-span-3">
-              <Checkout concertId={concertId} tickets={tickets} />
+              <Checkout concertId={concertId} tickets={tickets} email={normalizedEmail} />
             </div>
           </div>
         </div>

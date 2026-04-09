@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO, isPast } from "date-fns"
 import { Ticket, Calendar, MapPin, Clock, Music } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
@@ -19,25 +18,29 @@ interface Booking {
   total_amount: number
   payment_status: string
   booking_reference: string
+  email: string
   created_at: string
 }
 
-export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string }>
+}) {
+  const { email: emailParam } = await searchParams
+  const email = (emailParam || "").trim().toLowerCase()
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const hasValidEmail = emailRegex.test(email)
 
-  if (!user) {
-    redirect("/auth/login")
-  }
-
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("payment_status", "completed")
-    .order("concert_date", { ascending: true })
-
-  const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Guest"
+  const supabase = createAdminClient()
+  const { data: bookings } = hasValidEmail
+    ? await supabase
+        .from("bookings")
+        .select("*")
+        .eq("email", email)
+        .eq("payment_status", "completed")
+        .order("concert_date", { ascending: true })
+    : { data: [] as Booking[] }
 
   const upcomingBookings = (bookings as Booking[] || []).filter(
     (b) => !isPast(parseISO(b.concert_date))
@@ -45,7 +48,7 @@ export default async function DashboardPage() {
   const pastBookings = (bookings as Booking[] || []).filter(
     (b) => isPast(parseISO(b.concert_date))
   )
-  console.log(upcomingBookings)
+
   return (
     <>
       <SiteHeader />
@@ -53,16 +56,41 @@ export default async function DashboardPage() {
         <div className="mx-auto max-w-4xl px-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.3em] text-accent">
-              My Account
+              My Tickets
             </p>
             <h1 className="mt-2 font-serif text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              Welcome back, {displayName}
+              Find Your Booking
             </h1>
             <p className="mt-2 text-muted-foreground">
-              View and manage your opera concert tickets.
+              Enter your email to view tickets with completed payment.
             </p>
           </div>
 
+          <form className="mt-6 rounded-sm border border-border bg-card p-4 sm:p-6" method="GET">
+            <label htmlFor="email" className="mb-2 block text-sm font-medium text-card-foreground">
+              Email address
+            </label>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={email}
+                required
+                placeholder="you@example.com"
+                className="h-12 w-full rounded-md border border-border bg-background px-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <Button type="submit" className="h-12 px-8 text-base">
+                View Tickets
+              </Button>
+            </div>
+            {!hasValidEmail && emailParam ? (
+              <p className="mt-2 text-sm text-destructive">Please enter a valid email address.</p>
+            ) : null}
+          </form>
+
+          {!hasValidEmail ? null : (
+            <>
           {/* Upcoming Tickets */}
           <section className="mt-12">
             <h2 className="flex items-center gap-2 font-serif text-xl font-bold text-foreground">
@@ -86,7 +114,7 @@ export default async function DashboardPage() {
             ) : (
               <div className="mt-6 space-y-4">
                 {upcomingBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} />
+                  <BookingCard key={booking.id} booking={booking} email={email} />
                 ))}
               </div>
             )}
@@ -101,10 +129,12 @@ export default async function DashboardPage() {
               </h2>
               <div className="mt-6 space-y-4 opacity-75">
                 {pastBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} isPast />
+                  <BookingCard key={booking.id} booking={booking} email={email} isPast />
                 ))}
               </div>
             </section>
+          )}
+            </>
           )}
         </div>
       </main>
@@ -113,12 +143,20 @@ export default async function DashboardPage() {
   )
 }
 
-function BookingCard({ booking, isPast = false }: { booking: Booking; isPast?: boolean }) {
+function BookingCard({
+  booking,
+  email,
+  isPast = false,
+}: {
+  booking: Booking
+  email: string
+  isPast?: boolean
+}) {
   const dateObj = parseISO(booking.concert_date)
 
   return (
     <Link
-      href={`/dashboard/ticket/${booking.booking_reference}`}
+      href={`/dashboard/ticket/${booking.booking_reference}?email=${encodeURIComponent(email)}`}
       className="block rounded-sm border border-border bg-card p-6 transition-shadow hover:shadow-md"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
